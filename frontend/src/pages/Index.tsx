@@ -1,25 +1,51 @@
-import Navigation from "@/components/Navigation";
-import HeroSection from "@/components/HeroSection";
-import UploadDemo from "@/components/UploadDemo";
+// src/pages/Index.tsx (FINAL - Integrating Both Demos)
+
+// Keep necessary layout/structure imports
+import Navigation from "@/components/Navigation"; // Assuming this path is correct
+import HeroSection from "@/components/HeroSection"; // Assuming this path is correct
+
+// Import the combined Analysis Pipeline component (handles file upload)
+import AnalysisPipeline from "@/components/ui/AnalysisPipeline"; // Adjust path if needed
+
+// Import the NEW Multimodal Simulation component (handles live EEG + Face)
+import MultimodalSimulation from "@/components/ui/MultimodalSimulation"; // Adjust path if needed
+
+// Keep other relevant static section imports (adjust paths as necessary)
 import PreprocessingSection from "@/components/PreprocessingSection";
-import EEGSimulation from "@/components/EEGSimulation";
-import PredictionSection from "@/components/PredictionSection";
-import ResultsSection from "@/components/ResultsSection";
 import AboutSection from "@/components/AboutSection";
+// Import Footer if you have one
+// import Footer from "@/components/Footer";
+// Remove imports for components now integrated or replaced:
+// import ResultsSection from "@/components/ResultsSection";
+// import EEGSimulation from "@/components/EEGSimulation"; // Replaced by MultimodalSimulation
 
 const Index = () => {
+  // No state needed here anymore for file handling
+
   return (
-    <div className="min-h-screen">
-      <Navigation />
-      <main>
+    <div className="flex flex-col min-h-screen">
+      <Navigation /> {/* Render Navigation */}
+      <main className="flex-grow">
         <HeroSection />
-        <UploadDemo />
+
+        {/* --- Render the File Upload + Analysis component --- */}
+        {/* This handles EDF upload, metadata, waves, SHAP, and prediction */}
+        <AnalysisPipeline />
+
+        {/* --- Render the NEW Multimodal Live Simulation component --- */}
+        {/* This handles the live EEG wave + Webcam + Face Prediction + Fusion */}
+        <MultimodalSimulation />
+
+        {/* --- Render other static sections --- */}
         <PreprocessingSection />
-        <EEGSimulation />
-        <PredictionSection />
-        <ResultsSection />
+        {/* The EEGLiveSim is replaced by MultimodalSimulation */}
+        {/* <EEGLiveSim /> */}
+        {/* Results are likely integrated into AnalysisPipeline now */}
+        {/* <ResultsSection /> */}
         <AboutSection />
+
       </main>
+      {/* <Footer /> */} {/* Render Footer if you have one */}
     </div>
   );
 };
