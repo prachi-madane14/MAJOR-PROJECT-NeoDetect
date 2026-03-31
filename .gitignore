@@ -1,10 +1,13 @@
-# Python virtual environment
-venv/
+# Python
 backend/venv/
-
-# VS Code settings
-.vscode/
-
-# Python cache
-__pycache__/
+backend/__pycache__/
+backend/*.pkl
+backend/*.json
 *.pyc
+
+# Node
+frontend/node_modules/
+
+# Misc
+.env
+.DS_Store
