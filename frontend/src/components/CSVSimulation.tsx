@@ -184,7 +184,8 @@ function SignalCard({ sig, data }: { sig: typeof SIGNALS[number]; data: DataPoin
 
 // ─── XAI Card ─────────────────────────────────────────────────────────────────
 
-function XAICard({ entry, index }: { entry: XAIEntry; index: number }) {
+function XAICard({ entry, index, isNew }: { entry: XAIEntry; index: number; isNew: boolean }) {
+  // Latest entry (index 0) starts expanded, rest collapsed
   const [expanded, setExpanded] = useState(index === 0);
   const isPain = entry.prediction === 1;
   const conf   = safeFixed(entry.confidence * 100, 1, "0.0");
@@ -203,10 +204,13 @@ function XAICard({ entry, index }: { entry: XAIEntry; index: number }) {
   return (
     <div style={{
       background: isPain ? "#0f0a0a" : "#080f0a",
-      border: `1px solid ${isPain ? "#ef444430" : "#16a34a30"}`,
+      border: `1px solid ${isNew ? (isPain ? "#ef4444" : "#22c55e") : isPain ? "#ef444330" : "#16a34a30"}`,
       marginBottom: 8,
-      transition: "border-color 0.3s",
+      transition: "border-color 0.6s",
       flexShrink: 0,
+      // Flash ring on new entries
+      outline: isNew ? `1px solid ${isPain ? "#ef444460" : "#22c55e60"}` : "none",
+      outlineOffset: isNew ? "1px" : "0px",
     }}>
       <div
         onClick={() => setExpanded(e => !e)}
@@ -216,6 +220,14 @@ function XAICard({ entry, index }: { entry: XAIEntry; index: number }) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {isNew && (
+            <span style={{
+              fontSize: 8, letterSpacing: "0.1em", fontWeight: 700,
+              color: "#fbbf24", background: "#1a1000",
+              padding: "1px 5px", border: "1px solid #f59e0b40",
+              animation: "shimmer 1s ease-out",
+            }}>NEW</span>
+          )}
           <span style={{
             fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
             color: isPain ? "#f87171" : "#4ade80",
@@ -352,17 +364,45 @@ export default function CSVSimulation() {
   const [epochCount,      setEpochCount]      = useState(0);
   const [errorMsg,        setErrorMsg]        = useState("");
   const [fileName,        setFileName]        = useState("");
+  // XAI readability state
+  const [xaiPaused,       setXaiPaused]       = useState(false);
+  const [newestKey,       setNewestKey]       = useState<string>("");
+  const [pendingEntries,  setPendingEntries]  = useState<XAIEntry[]>([]);
+
   const esRef        = useRef<EventSource | null>(null);
   const xaiScrollRef = useRef<HTMLDivElement>(null);
+  const xaiPausedRef = useRef(false);
+
+  // Keep ref in sync with state so SSE handler can read it without stale closure
+  const syncPause = (val: boolean) => {
+    xaiPausedRef.current = val;
+    setXaiPaused(val);
+  };
+
+  const flushPending = useCallback(() => {
+    setPendingEntries(prev => {
+      if (prev.length === 0) return prev;
+      setXaiHistory(hist => {
+        const merged = [...prev, ...hist].slice(0, 20);
+        setNewestKey(`${merged[0]?.epoch}-${merged[0]?.time}`);
+        return merged;
+      });
+      return [];
+    });
+    syncPause(false);
+  }, []);
 
   const startSimulation = useCallback(async (file: File) => {
     esRef.current?.close();
     setData([]);
     setXaiHistory([]);
     setForecastHistory([]);
+    setPendingEntries([]);
     setEpochCount(0);
     setErrorMsg("");
     setFileName(file.name);
+    setNewestKey("");
+    syncPause(false);
     setStatus("uploading");
 
     try {
@@ -392,12 +432,10 @@ export default function CSVSimulation() {
         setData(prev => [...prev.slice(-29), pt]);
         setEpochCount(c => c + 1);
 
-        // Accumulate forecast history for sparkline
         if (pt.forecast) {
           setForecastHistory(prev => [...prev.slice(-49), pt.forecast!]);
         }
 
-        // XAI history
         if (pt.shap_values) {
           const entry: XAIEntry = {
             epoch: pt.time + 1,
@@ -409,10 +447,21 @@ export default function CSVSimulation() {
             shap_detail: pt.shap_detail,
             shap_top3: pt.shap_top3,
           };
-          setXaiHistory(prev => [entry, ...prev].slice(0, 20));
-          setTimeout(() => {
-            if (xaiScrollRef.current) xaiScrollRef.current.scrollTop = 0;
-          }, 50);
+
+          if (xaiPausedRef.current) {
+            // Queue it — don't push to visible list while user is reading
+            setPendingEntries(prev => [entry, ...prev].slice(0, 40));
+          } else {
+            setXaiHistory(prev => {
+              const next = [entry, ...prev].slice(0, 20);
+              setNewestKey(`${entry.epoch}-${entry.time}`);
+              return next;
+            });
+            // Scroll to top only when not paused
+            setTimeout(() => {
+              if (xaiScrollRef.current) xaiScrollRef.current.scrollTop = 0;
+            }, 50);
+          }
         }
       };
 
@@ -436,9 +485,12 @@ export default function CSVSimulation() {
     setData([]);
     setXaiHistory([]);
     setForecastHistory([]);
+    setPendingEntries([]);
     setEpochCount(0);
     setErrorMsg("");
     setFileName("");
+    setNewestKey("");
+    syncPause(false);
     setStatus("idle");
   }, []);
 
@@ -449,7 +501,6 @@ export default function CSVSimulation() {
   const streaming      = status === "streaming";
   const latestForecast = latest?.forecast;
 
-  // Derived forecast display values
   const fProb     = latestForecast?.forecast_prob ?? 0;
   const fRisk     = latestForecast?.risk_level ?? "UNKNOWN";
   const fColor    = fRisk === "HIGH" ? "#f87171" : fRisk === "MODERATE" ? "#fbbf24" : "#4ade80";
@@ -463,6 +514,7 @@ export default function CSVSimulation() {
         @keyframes pulse   { 0%,100%{opacity:1}    50%{opacity:.3}  }
         @keyframes blink   { 0%,49%{opacity:1}     50%,100%{opacity:0} }
         @keyframes shimmer { 0%{opacity:.4}         50%{opacity:1}   100%{opacity:.4} }
+        @keyframes flashIn { 0%{opacity:0;transform:translateY(-4px)} 100%{opacity:1;transform:translateY(0)} }
         * { box-sizing: border-box; margin: 0; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #080c14; }
@@ -707,38 +759,100 @@ export default function CSVSimulation() {
 
               {/* ── RIGHT — XAI log ── */}
               <div style={{ position: "sticky", top: 64, maxHeight: "calc(100vh - 80px)", display: "flex", flexDirection: "column" }}>
+
+                {/* XAI header */}
                 <div style={{
                   background: "#0a0f1e", border: "1px solid #1a2540", borderBottom: "none",
-                  padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center",
+                  padding: "10px 16px",
                   flexShrink: 0,
                 }}>
-                  <div>
-                    <div style={{ fontSize: 10, letterSpacing: "0.14em", color: "#4b6cb7", marginBottom: 2 }}>
-                      XAI EXPLANATION LOG
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div>
+                      <div style={{ fontSize: 10, letterSpacing: "0.14em", color: "#4b6cb7", marginBottom: 2 }}>
+                        XAI EXPLANATION LOG
+                      </div>
+                      <div style={{ fontSize: 9, color: "#334155" }}>last {xaiHistory.length} / 20 epochs · click to expand</div>
                     </div>
-                    <div style={{ fontSize: 9, color: "#334155" }}>last {xaiHistory.length} / 20 epochs · click to expand</div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <span style={{ fontSize: 10, padding: "2px 8px", color: "#f87171", background: "#1c0a0a", border: "1px solid #ef444420" }}>
+                        {xaiHistory.filter(x => x.prediction === 1).length} pain
+                      </span>
+                      <span style={{ fontSize: 10, padding: "2px 8px", color: "#4ade80", background: "#05130d", border: "1px solid #16a34a20" }}>
+                        {xaiHistory.filter(x => x.prediction === 0).length} clear
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <span style={{ fontSize: 10, padding: "2px 8px", color: "#f87171", background: "#1c0a0a", border: "1px solid #ef444420" }}>
-                      {xaiHistory.filter(x => x.prediction === 1).length} pain
-                    </span>
-                    <span style={{ fontSize: 10, padding: "2px 8px", color: "#4ade80", background: "#05130d", border: "1px solid #16a34a20" }}>
-                      {xaiHistory.filter(x => x.prediction === 0).length} clear
-                    </span>
+
+                  {/* Pause / resume controls */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <button
+                      onClick={() => xaiPaused ? flushPending() : syncPause(true)}
+                      style={{
+                        fontSize: 9, letterSpacing: "0.1em", fontFamily: "inherit",
+                        color: xaiPaused ? "#fbbf24" : "#64748b",
+                        background: xaiPaused ? "#1a1000" : "#0d1525",
+                        border: `1px solid ${xaiPaused ? "#f59e0b40" : "#1a2540"}`,
+                        padding: "3px 10px", cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {xaiPaused ? "▶ RESUME" : "⏸ PAUSE"}
+                    </button>
+                    {xaiPaused && pendingEntries.length > 0 && (
+                      <span style={{
+                        fontSize: 9, color: "#fbbf24", animation: "shimmer 1.5s infinite",
+                        letterSpacing: "0.06em",
+                      }}>
+                        +{pendingEntries.length} queued
+                      </span>
+                    )}
+                    {!xaiPaused && (
+                      <span style={{ fontSize: 9, color: "#1e2d4a", letterSpacing: "0.06em" }}>
+                        hover to read
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <div ref={xaiScrollRef} style={{
-                  flex: 1, overflowY: "auto", background: "#080c14",
-                  border: "1px solid #1a2540", padding: 8,
-                }}>
+                {/* Scrollable XAI list — pause on hover */}
+                <div
+                  ref={xaiScrollRef}
+                  onMouseEnter={() => { if (streaming) syncPause(true); }}
+                  onMouseLeave={() => {
+                    // Only auto-resume if they didn't click pause manually
+                    // (we just resume on mouse leave — if they want to keep paused they can click the button)
+                    if (streaming) {
+                      flushPending();
+                    }
+                  }}
+                  style={{
+                    flex: 1, overflowY: "auto", background: "#080c14",
+                    border: "1px solid #1a2540", padding: 8,
+                    // Subtle border glow while paused so user knows it's locked
+                    outline: xaiPaused ? "1px solid #f59e0b20" : "none",
+                    transition: "outline 0.3s",
+                  }}
+                >
                   {xaiHistory.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "40px 16px", fontSize: 11, color: "#1e2d4a", letterSpacing: "0.08em" }}>
                       XAI entries will appear<br />as epochs stream in
                     </div>
                   ) : (
                     xaiHistory.map((entry, i) => (
-                      <XAICard key={`${entry.epoch}-${entry.time}`} entry={entry} index={i} />
+                      <div
+                        key={`${entry.epoch}-${entry.time}`}
+                        style={{
+                          animation: `${entry.epoch}-${entry.time}` === newestKey && i === 0
+                            ? "flashIn 0.3s ease-out"
+                            : "none",
+                        }}
+                      >
+                        <XAICard
+                          entry={entry}
+                          index={i}
+                          isNew={`${entry.epoch}-${entry.time}` === newestKey && i === 0}
+                        />
+                      </div>
                     ))
                   )}
                 </div>
