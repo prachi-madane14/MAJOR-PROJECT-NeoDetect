@@ -66,60 +66,6 @@ const SIGNALS = [
   { key: "spo2_drop",    label: "SpO₂ Drop",    unit: "%",      color: "#fb7185", ref: 4.0   },
 ] as const;
 
-// ─── Forecast Sparkline Panel ─────────────────────────────────────────────────
-
-function ForecastTrendPanel({ history }: { history: ForecastResult[] }) {
-  const sparkData = history.slice(-20).map((f, i) => ({
-    i,
-    prob: f.available ? (f.forecast_prob ?? 0) : null,
-  }));
-
-  const latest = history[history.length - 1];
-  const riskColor =
-    latest?.risk_level === "HIGH"     ? "#ef4444" :
-    latest?.risk_level === "MODERATE" ? "#f59e0b" : "#22c55e";
-
-  if (sparkData.filter(d => d.prob !== null).length < 3) return null;
-
-  return (
-    <div style={{
-      background: "#0a0f1e",
-      border: "1px solid #1a2540",
-      padding: "10px 16px",
-      marginBottom: 16,
-    }}>
-      <div style={{ fontSize: 9, letterSpacing: "0.12em", color: "#334155", marginBottom: 6 }}>
-        🔮 FORECAST TREND · PAIN RISK NEXT ~30 s (LAST 20 EPOCHS)
-      </div>
-      <div style={{ height: 44 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={sparkData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-            <XAxis dataKey="i" hide />
-            <YAxis domain={[0, 100]} hide />
-            <Tooltip
-              contentStyle={{ background: "#0d1525", border: "1px solid #1a2540", fontSize: 10, fontFamily: "inherit" }}
-              formatter={(v: any) => [`${safeFixed(v, 1)}%`, "Risk"]}
-              labelFormatter={() => ""}
-            />
-            <ReferenceLine y={70} stroke="#ef444428" strokeDasharray="3 3" />
-            <ReferenceLine y={45} stroke="#f59e0b28" strokeDasharray="3 3" />
-            <Line
-              type="monotone" dataKey="prob"
-              stroke={riskColor} strokeWidth={1.5}
-              dot={false} isAnimationActive={false}
-              connectNulls={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 16, marginTop: 2 }}>
-        <span style={{ fontSize: 8, color: "#ef444450" }}>── HIGH (70%)</span>
-        <span style={{ fontSize: 8, color: "#f59e0b50" }}>── MODERATE (45%)</span>
-      </div>
-    </div>
-  );
-}
-
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function Dot({ active }: { active: boolean }) {
@@ -182,13 +128,13 @@ function SignalCard({ sig, data }: { sig: typeof SIGNALS[number]; data: DataPoin
   );
 }
 
-// ─── XAI Card ─────────────────────────────────────────────────────────────────
+// ─── XAI Card — wider, bigger text, clear feature labels ─────────────────────
 
 function XAICard({ entry, index, isNew }: { entry: XAIEntry; index: number; isNew: boolean }) {
-  // Latest entry (index 0) starts expanded, rest collapsed
   const [expanded, setExpanded] = useState(index === 0);
   const isPain = entry.prediction === 1;
   const conf   = safeFixed(entry.confidence * 100, 1, "0.0");
+  const confNum = parseFloat(conf);
 
   const entries: [string, number][] = entry.shap_values
     ? Object.entries(entry.shap_values)
@@ -201,109 +147,154 @@ function XAICard({ entry, index, isNew }: { entry: XAIEntry; index: number; isNe
     ? Math.max(...entries.map(([, v]) => Math.abs(v)), 0.001)
     : 0.001;
 
+  const accentColor = isPain ? "#f87171" : "#4ade80";
+  const dimAccent   = isPain ? "#ef444430" : "#16a34a30";
+  const bgCard      = isPain ? "#0f0a0a" : "#080f0a";
+
   return (
     <div style={{
-      background: isPain ? "#0f0a0a" : "#080f0a",
-      border: `1px solid ${isNew ? (isPain ? "#ef4444" : "#22c55e") : isPain ? "#ef444330" : "#16a34a30"}`,
-      marginBottom: 8,
+      background: bgCard,
+      border: `1px solid ${isNew ? accentColor : dimAccent}`,
       transition: "border-color 0.6s",
       flexShrink: 0,
-      // Flash ring on new entries
-      outline: isNew ? `1px solid ${isPain ? "#ef444460" : "#22c55e60"}` : "none",
-      outlineOffset: isNew ? "1px" : "0px",
+      width: 340,
+      outline: isNew ? `1px solid ${isPain ? "#ef444440" : "#22c55e40"}` : "none",
+      outlineOffset: "2px",
     }}>
+
+      {/* ── Card header ── */}
       <div
         onClick={() => setExpanded(e => !e)}
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "10px 14px", cursor: "pointer", userSelect: "none",
+          padding: "12px 16px", cursor: "pointer", userSelect: "none",
+          borderBottom: `1px solid ${dimAccent}`,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {isNew && (
             <span style={{
-              fontSize: 8, letterSpacing: "0.1em", fontWeight: 700,
+              fontSize: 9, letterSpacing: "0.1em", fontWeight: 700,
               color: "#fbbf24", background: "#1a1000",
-              padding: "1px 5px", border: "1px solid #f59e0b40",
+              padding: "2px 6px", border: "1px solid #f59e0b50",
               animation: "shimmer 1s ease-out",
             }}>NEW</span>
           )}
           <span style={{
-            fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
-            color: isPain ? "#f87171" : "#4ade80",
+            fontSize: 11, fontWeight: 700, letterSpacing: "0.1em",
+            color: accentColor,
             background: isPain ? "#1c0a0a" : "#05130d",
-            padding: "2px 7px",
-            border: `1px solid ${isPain ? "#ef444440" : "#16a34a40"}`,
+            padding: "3px 10px",
+            border: `1px solid ${dimAccent}`,
           }}>
-            {isPain ? "PAIN" : "CLEAR"}
+            {isPain ? "⚠ PAIN" : "✓ CLEAR"}
           </span>
-          <span style={{ fontSize: 10, color: "#64748b" }}>Epoch {entry.epoch}</span>
-          <span style={{ fontSize: 10, color: "#334155" }}>T+{entry.time}</span>
+          <span style={{ fontSize: 12, color: "#94a3b8" }}>Epoch {entry.epoch}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{
-            fontSize: 12, fontWeight: 700,
-            color: parseFloat(conf) > 70 ? "#f87171" : parseFloat(conf) > 45 ? "#fbbf24" : "#4ade80",
+            fontSize: 18, fontWeight: 700,
+            color: confNum > 70 ? "#f87171" : confNum > 45 ? "#fbbf24" : "#4ade80",
           }}>
             {conf}%
           </span>
-          <span style={{ fontSize: 10, color: "#334155" }}>{expanded ? "▲" : "▼"}</span>
+          <span style={{ fontSize: 11, color: "#334155" }}>{expanded ? "▲" : "▼"}</span>
         </div>
       </div>
 
-      {expanded && (
-        <div style={{ padding: "0 14px 12px" }}>
-          {entry.shap_reason && (
-            <p style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, fontStyle: "italic", lineHeight: 1.5 }}>
-              {entry.shap_reason}
-            </p>
-          )}
-          {entry.shap_detail && (
-            <p style={{ fontSize: 10, color: "#475569", marginBottom: 10 }}>{entry.shap_detail}</p>
-          )}
-          {entries.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-              {entries.map(([feat, val]) => {
-                const pct = (Math.abs(val) / max) * 100;
-                const pos = val > 0;
-                return (
-                  <div key={feat} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 10, color: "#64748b", width: 100, flexShrink: 0 }}>
-                      {feat.replace(/_/g, " ")}
-                    </span>
-                    <div style={{ flex: 1, height: 3, background: "#1e2d4a" }}>
-                      <div style={{
-                        width: `${pct}%`, height: "100%",
-                        background: pos ? "#ef4444" : "#22c55e",
-                        transition: "width 0.3s",
-                      }} />
-                    </div>
-                    <span style={{ fontSize: 10, width: 50, textAlign: "right", color: pos ? "#f87171" : "#4ade80" }}>
-                      {pos ? "+" : ""}{safeFixed(val)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {entry.shap_top3 && entry.shap_top3.length > 0 && (
-            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #1a2540" }}>
-              <div style={{ fontSize: 9, letterSpacing: "0.1em", color: "#334155", marginBottom: 6 }}>TOP DRIVERS</div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {entry.shap_top3.map((t, i) => (
-                  <span key={i} style={{
-                    fontSize: 10,
-                    color: t.direction === "up" ? "#f87171" : "#4ade80",
-                    background: t.direction === "up" ? "#1c0a0a" : "#05130d",
-                    padding: "2px 8px",
-                    border: `1px solid ${t.direction === "up" ? "#ef444430" : "#16a34a30"}`,
-                  }}>
-                    {t.feature.replace(/_/g, " ")} {t.direction === "up" ? "↑" : "↓"} {Number(t.value) > 0 ? "+" : ""}{safeFixed(t.value)}
+      {/* ── Reason text (always visible) ── */}
+      {entry.shap_reason && (
+        <div style={{ padding: "10px 16px 0", borderBottom: `1px solid ${dimAccent}` }}>
+          <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 10, fontStyle: "italic", lineHeight: 1.6 }}>
+            {entry.shap_reason}
+          </p>
+        </div>
+      )}
+
+      {/* ── SHAP bars — always visible ── */}
+      <div style={{ padding: "12px 16px" }}>
+        <div style={{ fontSize: 10, letterSpacing: "0.1em", color: "#475569", marginBottom: 10 }}>
+          FEATURE CONTRIBUTIONS
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+          {entries.map(([feat, val]) => {
+            const pct = (Math.abs(val) / max) * 100;
+            const pos = val > 0;
+            // Pretty-print feature name
+            const label = feat
+              .replace(/_/g, " ")
+              .replace(/\b\w/g, c => c.toUpperCase());
+            return (
+              <div key={feat}>
+                {/* Feature name + value on same row */}
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, color: "#cbd5e1", fontWeight: 500 }}>
+                    {label}
                   </span>
-                ))}
+                  <span style={{
+                    fontSize: 12, fontWeight: 700,
+                    color: pos ? "#f87171" : "#4ade80",
+                  }}>
+                    {pos ? "+" : ""}{safeFixed(val)}
+                  </span>
+                </div>
+                {/* Wide bar */}
+                <div style={{ height: 6, background: "#1a2540", borderRadius: 3 }}>
+                  <div style={{
+                    width: `${pct}%`, height: "100%", borderRadius: 3,
+                    background: pos ? "#ef4444" : "#22c55e",
+                    transition: "width 0.35s ease",
+                    boxShadow: pos ? "0 0 6px #ef444460" : "0 0 6px #22c55e60",
+                  }} />
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Top drivers (expandable) ── */}
+      {expanded && entry.shap_top3 && entry.shap_top3.length > 0 && (
+        <div style={{
+          padding: "10px 16px 14px",
+          borderTop: `1px solid ${dimAccent}`,
+        }}>
+          <div style={{ fontSize: 10, letterSpacing: "0.1em", color: "#475569", marginBottom: 8 }}>
+            TOP DRIVERS
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {entry.shap_top3.map((t, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{
+                  fontSize: 13, fontWeight: 700,
+                  color: t.direction === "up" ? "#f87171" : "#4ade80",
+                  width: 16,
+                }}>
+                  {t.direction === "up" ? "↑" : "↓"}
+                </span>
+                <span style={{ fontSize: 12, color: "#94a3b8", flex: 1 }}>
+                  {t.feature.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                </span>
+                <span style={{
+                  fontSize: 12, fontWeight: 700,
+                  color: t.direction === "up" ? "#f87171" : "#4ade80",
+                }}>
+                  {Number(t.value) > 0 ? "+" : ""}{safeFixed(t.value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {expanded && entry.shap_detail && (
+        <div style={{
+          padding: "0 16px 12px",
+          borderTop: `1px solid ${dimAccent}`,
+        }}>
+          <p style={{ fontSize: 11, color: "#475569", marginTop: 10, lineHeight: 1.6 }}>
+            {entry.shap_detail}
+          </p>
         </div>
       )}
     </div>
@@ -360,11 +351,9 @@ export default function CSVSimulation() {
   const [status,          setStatus]          = useState<SimStatus>("idle");
   const [data,            setData]            = useState<DataPoint[]>([]);
   const [xaiHistory,      setXaiHistory]      = useState<XAIEntry[]>([]);
-  const [forecastHistory, setForecastHistory] = useState<ForecastResult[]>([]);
   const [epochCount,      setEpochCount]      = useState(0);
   const [errorMsg,        setErrorMsg]        = useState("");
   const [fileName,        setFileName]        = useState("");
-  // XAI readability state
   const [xaiPaused,       setXaiPaused]       = useState(false);
   const [newestKey,       setNewestKey]       = useState<string>("");
   const [pendingEntries,  setPendingEntries]  = useState<XAIEntry[]>([]);
@@ -373,7 +362,6 @@ export default function CSVSimulation() {
   const xaiScrollRef = useRef<HTMLDivElement>(null);
   const xaiPausedRef = useRef(false);
 
-  // Keep ref in sync with state so SSE handler can read it without stale closure
   const syncPause = (val: boolean) => {
     xaiPausedRef.current = val;
     setXaiPaused(val);
@@ -396,7 +384,6 @@ export default function CSVSimulation() {
     esRef.current?.close();
     setData([]);
     setXaiHistory([]);
-    setForecastHistory([]);
     setPendingEntries([]);
     setEpochCount(0);
     setErrorMsg("");
@@ -432,10 +419,6 @@ export default function CSVSimulation() {
         setData(prev => [...prev.slice(-29), pt]);
         setEpochCount(c => c + 1);
 
-        if (pt.forecast) {
-          setForecastHistory(prev => [...prev.slice(-49), pt.forecast!]);
-        }
-
         if (pt.shap_values) {
           const entry: XAIEntry = {
             epoch: pt.time + 1,
@@ -449,7 +432,6 @@ export default function CSVSimulation() {
           };
 
           if (xaiPausedRef.current) {
-            // Queue it — don't push to visible list while user is reading
             setPendingEntries(prev => [entry, ...prev].slice(0, 40));
           } else {
             setXaiHistory(prev => {
@@ -457,9 +439,8 @@ export default function CSVSimulation() {
               setNewestKey(`${entry.epoch}-${entry.time}`);
               return next;
             });
-            // Scroll to top only when not paused
             setTimeout(() => {
-              if (xaiScrollRef.current) xaiScrollRef.current.scrollTop = 0;
+              if (xaiScrollRef.current) xaiScrollRef.current.scrollLeft = 0;
             }, 50);
           }
         }
@@ -484,7 +465,6 @@ export default function CSVSimulation() {
     esRef.current?.close();
     setData([]);
     setXaiHistory([]);
-    setForecastHistory([]);
     setPendingEntries([]);
     setEpochCount(0);
     setErrorMsg("");
@@ -494,18 +474,11 @@ export default function CSVSimulation() {
     setStatus("idle");
   }, []);
 
-  const latest         = data[data.length - 1];
-  const recentPain     = data.slice(-5).filter(d => d.prediction === 1).length;
-  const alert          = recentPain >= 3;
-  const conf           = isFinite(Number(latest?.confidence)) ? Number(latest?.confidence) * 100 : 0;
-  const streaming      = status === "streaming";
-  const latestForecast = latest?.forecast;
-
-  const fProb     = latestForecast?.forecast_prob ?? 0;
-  const fRisk     = latestForecast?.risk_level ?? "UNKNOWN";
-  const fColor    = fRisk === "HIGH" ? "#f87171" : fRisk === "MODERATE" ? "#fbbf24" : "#4ade80";
-  const fBg       = fRisk === "HIGH" ? "#0f0505"  : fRisk === "MODERATE" ? "#0f0a00"  : "#05130d";
-  const fBorder   = fRisk === "HIGH" ? "#ef4444"  : fRisk === "MODERATE" ? "#f59e0b"  : "#16a34a";
+  const latest     = data[data.length - 1];
+  const recentPain = data.slice(-5).filter(d => d.prediction === 1).length;
+  const alert      = recentPain >= 3;
+  const conf       = isFinite(Number(latest?.confidence)) ? Number(latest?.confidence) * 100 : 0;
+  const streaming  = status === "streaming";
 
   return (
     <>
@@ -514,11 +487,11 @@ export default function CSVSimulation() {
         @keyframes pulse   { 0%,100%{opacity:1}    50%{opacity:.3}  }
         @keyframes blink   { 0%,49%{opacity:1}     50%,100%{opacity:0} }
         @keyframes shimmer { 0%{opacity:.4}         50%{opacity:1}   100%{opacity:.4} }
-        @keyframes flashIn { 0%{opacity:0;transform:translateY(-4px)} 100%{opacity:1;transform:translateY(0)} }
+        @keyframes flashIn { 0%{opacity:0;transform:translateX(-10px)} 100%{opacity:1;transform:translateX(0)} }
         * { box-sizing: border-box; margin: 0; }
-        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar { width: 4px; height: 6px; }
         ::-webkit-scrollbar-track { background: #080c14; }
-        ::-webkit-scrollbar-thumb { background: #1e2d4a; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb { background: #1e2d4a; border-radius: 3px; }
       `}</style>
 
       <div style={{
@@ -587,7 +560,7 @@ export default function CSVSimulation() {
                   Upload your dataset to run a live simulation
                 </div>
                 <div style={{ fontSize: 11, color: "#475569" }}>
-                  Rows stream one-by-one · SHAP explanation · Pain forecasting · XAI history log
+                  Rows stream one-by-one · SHAP explanation · XAI history log
                 </div>
               </div>
               <UploadZone onFile={startSimulation} />
@@ -612,113 +585,50 @@ export default function CSVSimulation() {
             </div>
           )}
 
-          {/* ── Live simulation layout ── */}
+          {/* ── Live simulation — single column ── */}
           {(streaming || status === "done") && data.length > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 16, alignItems: "start" }}>
+            <div>
 
-              {/* ── LEFT ── */}
-              <div>
-
-                {/* ══ Dual status row ══ */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-
-                  {/* Current detection card */}
-                  <div style={{
-                    border: `1px solid ${alert ? "#ef4444" : "#16a34a"}`,
-                    background: alert ? "#0f0505" : "#05130d",
-                    padding: "14px 18px",
-                    transition: "all 0.4s",
-                  }}>
-                    <div style={{ fontSize: 9, letterSpacing: "0.14em", color: "#334155", marginBottom: 8 }}>
-                      ⚡ CURRENT STATUS
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                      <div style={{
-                        width: 9, height: 9, borderRadius: "50%",
-                        background: alert ? "#ef4444" : "#22c55e",
-                        boxShadow: `0 0 8px ${alert ? "#ef4444" : "#22c55e"}`,
-                        animation: alert ? "blink 1s infinite" : "pulse 3s infinite",
-                        flexShrink: 0,
-                      }} />
-                      <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", color: alert ? "#fca5a5" : "#86efac" }}>
-                        {alert ? "⚠ PAIN DETECTED" : "✓ NO PAIN"}
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 9, color: "#475569", marginBottom: 10 }}>
-                      {recentPain}/5 recent epochs flagged · rolling window
-                    </div>
-                    <div style={{ fontSize: 9, color: "#475569", marginBottom: 3 }}>PAIN PROBABILITY</div>
-                    <div style={{ height: 3, background: "#1e2d4a", marginBottom: 5 }}>
-                      <div style={{
-                        height: "100%", width: `${conf}%`,
-                        background: conf > 70 ? "#ef4444" : conf > 45 ? "#f59e0b" : "#22c55e",
-                        transition: "width 0.5s",
-                      }} />
-                    </div>
+              {/* ══ Status row ══ */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                <div style={{
+                  border: `1px solid ${alert ? "#ef4444" : "#16a34a"}`,
+                  background: alert ? "#0f0505" : "#05130d",
+                  padding: "14px 18px",
+                  transition: "all 0.4s",
+                }}>
+                  <div style={{ fontSize: 9, letterSpacing: "0.14em", color: "#334155", marginBottom: 8 }}>
+                    ⚡ CURRENT STATUS
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
                     <div style={{
-                      fontSize: 24, fontWeight: 700,
-                      color: conf > 70 ? "#f87171" : conf > 45 ? "#fbbf24" : "#4ade80",
-                    }}>
-                      {safeFixed(conf, 1)}%
+                      width: 9, height: 9, borderRadius: "50%",
+                      background: alert ? "#ef4444" : "#22c55e",
+                      boxShadow: `0 0 8px ${alert ? "#ef4444" : "#22c55e"}`,
+                      animation: alert ? "blink 1s infinite" : "pulse 3s infinite",
+                      flexShrink: 0,
+                    }} />
+                    <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", color: alert ? "#fca5a5" : "#86efac" }}>
+                      {alert ? "⚠ PAIN DETECTED" : "✓ NO PAIN"}
                     </div>
                   </div>
-
-                  {/* Forecast card */}
-                  <div style={{
-                    border: `1px solid ${latestForecast?.available ? fBorder : "#1a2540"}`,
-                    background: latestForecast?.available ? fBg : "#0a0f1e",
-                    padding: "14px 18px",
-                    transition: "all 0.4s",
-                  }}>
-                    <div style={{ fontSize: 9, letterSpacing: "0.14em", color: "#334155", marginBottom: 8 }}>
-                      🔮 FORECAST · NEXT ~30 s
-                    </div>
-
-                    {!latestForecast?.available ? (
-                      <div style={{ fontSize: 11, color: "#334155", fontStyle: "italic" }}>
-                        Collecting signal history…<br />
-                        <span style={{ fontSize: 10, color: "#1e2d4a" }}>
-                          Available after 4 epochs
-                        </span>
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                          <span style={{
-                            fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
-                            color: fColor,
-                            background: fRisk === "HIGH" ? "#1c0a0a" : fRisk === "MODERATE" ? "#1a1000" : "#05130d",
-                            padding: "2px 9px",
-                            border: `1px solid ${fBorder}40`,
-                          }}>
-                            {fRisk} RISK
-                          </span>
-                        </div>
-                        <div style={{ fontSize: 10, color: "#64748b", marginBottom: 10, lineHeight: 1.5 }}>
-                          {latestForecast.message}
-                        </div>
-                        <div style={{ fontSize: 9, color: "#475569", marginBottom: 3 }}>FUTURE PAIN PROBABILITY</div>
-                        <div style={{ height: 3, background: "#1e2d4a", marginBottom: 5 }}>
-                          <div style={{
-                            height: "100%",
-                            width: `${Math.min(fProb, 100)}%`,
-                            background: fRisk === "HIGH" ? "#ef4444" : fRisk === "MODERATE" ? "#f59e0b" : "#22c55e",
-                            transition: "width 0.6s ease",
-                          }} />
-                        </div>
-                        <div style={{ fontSize: 24, fontWeight: 700, color: fColor }}>
-                          {safeFixed(fProb, 1)}%
-                        </div>
-                      </>
-                    )}
+                  <div style={{ fontSize: 9, color: "#475569", marginBottom: 10 }}>
+                    {recentPain}/5 recent epochs flagged · rolling window
+                  </div>
+                  <div style={{ fontSize: 9, color: "#475569", marginBottom: 3 }}>PAIN PROBABILITY</div>
+                  <div style={{ height: 3, background: "#1e2d4a", marginBottom: 5 }}>
+                    <div style={{
+                      height: "100%", width: `${conf}%`,
+                      background: conf > 70 ? "#ef4444" : conf > 45 ? "#f59e0b" : "#22c55e",
+                      transition: "width 0.5s",
+                    }} />
+                  </div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: conf > 70 ? "#f87171" : conf > 45 ? "#fbbf24" : "#4ade80" }}>
+                    {safeFixed(conf, 1)}%
                   </div>
                 </div>
 
-                {/* Forecast trend sparkline */}
-                <ForecastTrendPanel history={forecastHistory} />
-
-                {/* Stats strip */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
                   {[
                     { label: "EEG Kurtosis", val: latest?.eeg_kurtosis, warn: (latest?.eeg_kurtosis ?? 0) > 3.5 },
                     { label: "RR Interval",  val: latest?.rr_interval,  warn: (latest?.rr_interval ?? 1) < 0.38 },
@@ -739,103 +649,96 @@ export default function CSVSimulation() {
                     </div>
                   ))}
                 </div>
-
-                {/* Signal grids */}
-                {(["EEG", "Cardiac & SpO₂"] as const).map((group, gi) => (
-                  <div key={group} style={{ marginBottom: 16 }}>
-                    <div style={{
-                      fontSize: 9, fontWeight: 700, letterSpacing: "0.14em",
-                      textTransform: "uppercase", color: "#334155",
-                      marginBottom: 8, borderBottom: "1px solid #1a2540", paddingBottom: 6,
-                    }}>{group}</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 8 }}>
-                      {SIGNALS.filter((_, i) => gi === 0 ? i < 5 : i >= 5).map(sig => (
-                        <SignalCard key={sig.key} sig={sig} data={data} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
               </div>
 
-              {/* ── RIGHT — XAI log ── */}
-              <div style={{ position: "sticky", top: 64, maxHeight: "calc(100vh - 80px)", display: "flex", flexDirection: "column" }}>
+              {/* ══ Signal grids ══ */}
+              {(["EEG", "Cardiac & SpO₂"] as const).map((group, gi) => (
+                <div key={group} style={{ marginBottom: 16 }}>
+                  <div style={{
+                    fontSize: 9, fontWeight: 700, letterSpacing: "0.14em",
+                    textTransform: "uppercase", color: "#334155",
+                    marginBottom: 8, borderBottom: "1px solid #1a2540", paddingBottom: 6,
+                  }}>{group}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 8 }}>
+                    {SIGNALS.filter((_, i) => gi === 0 ? i < 5 : i >= 5).map(sig => (
+                      <SignalCard key={sig.key} sig={sig} data={data} />
+                    ))}
+                  </div>
+                </div>
+              ))}
 
-                {/* XAI header */}
+              {/* ══ XAI Explanation Log — full width horizontal scroll ══ */}
+              <div style={{ marginTop: 8 }}>
+
+                {/* Header */}
                 <div style={{
-                  background: "#0a0f1e", border: "1px solid #1a2540", borderBottom: "none",
-                  padding: "10px 16px",
-                  flexShrink: 0,
+                  background: "#0a0f1e",
+                  border: "1px solid #1a2540",
+                  borderBottom: "none",
+                  padding: "12px 18px",
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
                 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div>
-                      <div style={{ fontSize: 10, letterSpacing: "0.14em", color: "#4b6cb7", marginBottom: 2 }}>
-                        XAI EXPLANATION LOG
-                      </div>
-                      <div style={{ fontSize: 9, color: "#334155" }}>last {xaiHistory.length} / 20 epochs · click to expand</div>
+                  <div>
+                    <div style={{ fontSize: 11, letterSpacing: "0.14em", color: "#4b6cb7", marginBottom: 3 }}>
+                      XAI EXPLANATION LOG
                     </div>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <span style={{ fontSize: 10, padding: "2px 8px", color: "#f87171", background: "#1c0a0a", border: "1px solid #ef444420" }}>
-                        {xaiHistory.filter(x => x.prediction === 1).length} pain
-                      </span>
-                      <span style={{ fontSize: 10, padding: "2px 8px", color: "#4ade80", background: "#05130d", border: "1px solid #16a34a20" }}>
-                        {xaiHistory.filter(x => x.prediction === 0).length} clear
-                      </span>
+                    <div style={{ fontSize: 10, color: "#334155" }}>
+                      {xaiHistory.length} / 20 epochs shown · newest on left · hover to pause
                     </div>
                   </div>
-
-                  {/* Pause / resume controls */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     <button
                       onClick={() => xaiPaused ? flushPending() : syncPause(true)}
                       style={{
-                        fontSize: 9, letterSpacing: "0.1em", fontFamily: "inherit",
+                        fontSize: 10, letterSpacing: "0.1em", fontFamily: "inherit",
                         color: xaiPaused ? "#fbbf24" : "#64748b",
                         background: xaiPaused ? "#1a1000" : "#0d1525",
                         border: `1px solid ${xaiPaused ? "#f59e0b40" : "#1a2540"}`,
-                        padding: "3px 10px", cursor: "pointer",
+                        padding: "4px 12px", cursor: "pointer",
                         transition: "all 0.2s",
                       }}
                     >
                       {xaiPaused ? "▶ RESUME" : "⏸ PAUSE"}
                     </button>
                     {xaiPaused && pendingEntries.length > 0 && (
-                      <span style={{
-                        fontSize: 9, color: "#fbbf24", animation: "shimmer 1.5s infinite",
-                        letterSpacing: "0.06em",
-                      }}>
+                      <span style={{ fontSize: 10, color: "#fbbf24", animation: "shimmer 1.5s infinite" }}>
                         +{pendingEntries.length} queued
                       </span>
                     )}
-                    {!xaiPaused && (
-                      <span style={{ fontSize: 9, color: "#1e2d4a", letterSpacing: "0.06em" }}>
-                        hover to read
-                      </span>
-                    )}
+                    <span style={{ fontSize: 11, padding: "3px 10px", color: "#f87171", background: "#1c0a0a", border: "1px solid #ef444420" }}>
+                      {xaiHistory.filter(x => x.prediction === 1).length} pain
+                    </span>
+                    <span style={{ fontSize: 11, padding: "3px 10px", color: "#4ade80", background: "#05130d", border: "1px solid #16a34a20" }}>
+                      {xaiHistory.filter(x => x.prediction === 0).length} clear
+                    </span>
                   </div>
                 </div>
 
-                {/* Scrollable XAI list — pause on hover */}
+                {/* Scrollable cards */}
                 <div
                   ref={xaiScrollRef}
                   onMouseEnter={() => { if (streaming) syncPause(true); }}
-                  onMouseLeave={() => {
-                    // Only auto-resume if they didn't click pause manually
-                    // (we just resume on mouse leave — if they want to keep paused they can click the button)
-                    if (streaming) {
-                      flushPending();
-                    }
-                  }}
+                  onMouseLeave={() => { if (streaming) flushPending(); }}
                   style={{
-                    flex: 1, overflowY: "auto", background: "#080c14",
-                    border: "1px solid #1a2540", padding: 8,
-                    // Subtle border glow while paused so user knows it's locked
+                    display: "flex",
+                    flexDirection: "row",
+                    gap: 12,
+                    overflowX: "auto",
+                    padding: "14px 18px 16px",
+                    background: "#080c14",
+                    border: "1px solid #1a2540",
+                    minHeight: 100,
                     outline: xaiPaused ? "1px solid #f59e0b20" : "none",
                     transition: "outline 0.3s",
                   }}
                 >
                   {xaiHistory.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "40px 16px", fontSize: 11, color: "#1e2d4a", letterSpacing: "0.08em" }}>
-                      XAI entries will appear<br />as epochs stream in
+                    <div style={{
+                      display: "flex", alignItems: "center",
+                      fontSize: 12, color: "#1e2d4a", letterSpacing: "0.08em",
+                      padding: "20px 0", whiteSpace: "nowrap",
+                    }}>
+                      XAI entries will appear as epochs stream in…
                     </div>
                   ) : (
                     xaiHistory.map((entry, i) => (
@@ -843,28 +746,25 @@ export default function CSVSimulation() {
                         key={`${entry.epoch}-${entry.time}`}
                         style={{
                           animation: `${entry.epoch}-${entry.time}` === newestKey && i === 0
-                            ? "flashIn 0.3s ease-out"
-                            : "none",
+                            ? "flashIn 0.35s ease-out" : "none",
                         }}
                       >
-                        <XAICard
-                          entry={entry}
-                          index={i}
-                          isNew={`${entry.epoch}-${entry.time}` === newestKey && i === 0}
-                        />
+                        <XAICard entry={entry} index={i} isNew={`${entry.epoch}-${entry.time}` === newestKey && i === 0} />
                       </div>
                     ))
                   )}
                 </div>
 
+                {/* Legend */}
                 <div style={{
                   background: "#0a0f1e", border: "1px solid #1a2540", borderTop: "none",
-                  padding: "8px 14px", display: "flex", gap: 16, flexShrink: 0,
+                  padding: "8px 18px", display: "flex", gap: 24,
                 }}>
-                  <span style={{ fontSize: 9, color: "#f87171" }}>■ increases pain probability</span>
-                  <span style={{ fontSize: 9, color: "#4ade80" }}>■ decreases pain probability</span>
+                  <span style={{ fontSize: 10, color: "#f87171" }}>■ Red bar = increases pain probability</span>
+                  <span style={{ fontSize: 10, color: "#4ade80" }}>■ Green bar = decreases pain probability</span>
                 </div>
               </div>
+
             </div>
           )}
 
