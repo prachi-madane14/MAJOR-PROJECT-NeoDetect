@@ -212,10 +212,11 @@ The project demonstrates how multimodal physiological data and explainable machi
 
 Published in the **Proceedings of the 4th International Conference on Self Sustainable Artificial Intelligence Systems (ICSSSAIS 2026), IEEE**.
 
+Authors: Prof. Megha Trivedi, Prof. Swati Varma Chaitra Nair, Shruti Pachpor, Prachi Madane, Tanmay Narayankar
+
 🔗 **IEEE Xplore:** https://ieeexplore.ieee.org/document/11559529
 
-This research presents the NeoDetect framework for real-time neonatal pain detection using **multimodal EEG, ECG/RR-interval, and SpO₂ physiological features**, combined with machine learning, noise-aware preprocessing, SHAP explainability, and a deployable FastAPI/React architecture.
-
+This work was developed as a Final-Year Major Project in the Department of Computer Engineering at Vidyavardhini's College of Engineering and Technology, Vasai, India, under the guidance of Prof. Dr. Megha Trivedi.
 ---
 
 ## ⚠️ Disclaimer
