@@ -206,9 +206,15 @@ The project demonstrates how multimodal physiological data and explainable machi
 
 ---
 
-## 📚 Research
+## 📚 Publication
 
-NeoDetect was developed as a **4th-year major project** and the associated research work was **accepted/presented at IEEE ICSSSAIS 2026**.
+**NeoDetect: Real-Time Multimodal Machine Learning for Neonatal Pain Detection**
+
+Published in the **Proceedings of the 4th International Conference on Self Sustainable Artificial Intelligence Systems (ICSSSAIS 2026), IEEE**.
+
+🔗 **IEEE Xplore:** https://ieeexplore.ieee.org/document/11559529
+
+This research presents the NeoDetect framework for real-time neonatal pain detection using **multimodal EEG, ECG/RR-interval, and SpO₂ physiological features**, combined with machine learning, noise-aware preprocessing, SHAP explainability, and a deployable FastAPI/React architecture.
 
 ---
 
