@@ -140,7 +140,7 @@ NeoDetect includes a React-based NICU monitoring interface supporting CSV-based 
 
 ### 1. CSV Simulation Mode
 
-![CSV Simulation Mode](images/CSV Upload Interface.png)
+![CSV Simulation Mode](images/csv-upload.png)
 
 The CSV Simulation Mode provides the entry point for batch-based analysis. Users can upload a CSV dataset containing the seven predefined NeoDetect features. After uploading a valid file, the system sequentially processes each row through the prediction pipeline and generates real-time predictions and analysis.
 
@@ -148,7 +148,7 @@ The CSV Simulation Mode provides the entry point for batch-based analysis. Users
 
 ### 2. Pain-Free Monitoring Dashboard
 
-![Pain-Free Monitoring Dashboard](images/Pain-Free Monitoring Dashboard (Normal State).png)
+![Pain-Free Monitoring Dashboard](images/pain-free-dashboard.png)
 
 The monitoring dashboard displays the system in a normal, pain-free state. It provides the current prediction, pain probability, alert history, and key physiological indicators such as EEG Kurtosis, RR Interval, SpO₂ Drop, and Delta Power, along with live signal visualizations.
 
@@ -156,7 +156,7 @@ The monitoring dashboard displays the system in a normal, pain-free state. It pr
 
 ### 3. Pain Detection Dashboard
 
-![Pain Detection Dashboard](images/Pain Detection Dashboard (Active Alert State).png)
+![Pain Detection Dashboard](images/pain-detection-dashboard.png)
 
 The active alert dashboard displays a **PAIN DETECTED** state during real-time streaming. Abnormal physiological indicators are highlighted, while EEG, cardiac, and SpO₂ signals are visualized with threshold references to help identify patterns associated with the predicted pain state.
 
@@ -164,7 +164,7 @@ The active alert dashboard displays a **PAIN DETECTED** state during real-time s
 
 ### 4. Explainable AI — SHAP Feature Contributions
 
-![SHAP Explainability](images/Explainable AI (XAI) Feature Contribution Panel.png)
+![SHAP Explainability](images/shap-explainability.png)
 
 NeoDetect uses **SHAP-based Explainable AI (XAI)** to provide insight into model predictions. Feature contribution bars show how physiological parameters such as Delta Power, SpO₂ Drop, EEG Kurtosis, and RR Interval influence the prediction, helping users understand the reasoning behind each classification.
 
