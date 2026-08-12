@@ -135,25 +135,38 @@ The FastAPI backend generates predictions along with SHAP feature attributions.
 
 ## 🖥️ Website Screenshots
 
-### Dashboard
 
-<!-- Add your dashboard screenshot here -->
+NeoDetect includes a React-based NICU monitoring interface supporting CSV-based batch simulation, real-time pain monitoring, physiological signal visualization, and SHAP-based explainable AI.
 
-![NeoDetect Dashboard](images/dashboard.png)
+### 1. CSV Simulation Mode
 
-### Prediction Interface
+![CSV Simulation Mode](images/CSV Upload Interface.png)
 
-<!-- Add your prediction screenshot here -->
+The CSV Simulation Mode provides the entry point for batch-based analysis. Users can upload a CSV dataset containing the seven predefined NeoDetect features. After uploading a valid file, the system sequentially processes each row through the prediction pipeline and generates real-time predictions and analysis.
 
-![Prediction Interface](images/prediction.png)
+---
 
-### SHAP Explainability
+### 2. Pain-Free Monitoring Dashboard
 
-<!-- Add your SHAP screenshot here -->
+![Pain-Free Monitoring Dashboard](images/Pain-Free Monitoring Dashboard (Normal State).png)
 
-![SHAP Explainability](images/shap.png)
+The monitoring dashboard displays the system in a normal, pain-free state. It provides the current prediction, pain probability, alert history, and key physiological indicators such as EEG Kurtosis, RR Interval, SpO₂ Drop, and Delta Power, along with live signal visualizations.
 
-> Replace the image paths above with the actual paths/names of your screenshots.
+---
+
+### 3. Pain Detection Dashboard
+
+![Pain Detection Dashboard](images/Pain Detection Dashboard (Active Alert State).png)
+
+The active alert dashboard displays a **PAIN DETECTED** state during real-time streaming. Abnormal physiological indicators are highlighted, while EEG, cardiac, and SpO₂ signals are visualized with threshold references to help identify patterns associated with the predicted pain state.
+
+---
+
+### 4. Explainable AI — SHAP Feature Contributions
+
+![SHAP Explainability](images/Explainable AI (XAI) Feature Contribution Panel.png)
+
+NeoDetect uses **SHAP-based Explainable AI (XAI)** to provide insight into model predictions. Feature contribution bars show how physiological parameters such as Delta Power, SpO₂ Drop, EEG Kurtosis, and RR Interval influence the prediction, helping users understand the reasoning behind each classification.
 
 ---
 
